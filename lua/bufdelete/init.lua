@@ -19,13 +19,6 @@ local function buf_needs_deletion(bufnr, wipeout)
     end
 end
 
--- Prompt user for choice.
--- This captures the first character inputted after the prompt is shown and returns it.
-local function char_prompt(text)
-    api.nvim_echo({{ text }}, false, {})
-    return string.char(vim.fn.getchar())
-end
-
 -- Common kill function for Bdelete and Bwipeout.
 local function buf_kill(range, force, wipeout)
     if range == nil then
@@ -50,17 +43,17 @@ local function buf_kill(range, force, wipeout)
         for bufnr, _ in pairs(target_buffers) do
             -- If buffer is modified, prompt user for action.
             if bo[bufnr].modified then
-                local choice = char_prompt(
+                local choice = vim.fn.confirm(
                     string.format(
-                        'No write since last change for buffer %d (%s). Would you like to:\n' ..
-                        '(s)ave and close\n(i)gnore changes and close\n(c)ancel',
+                        'No write since last change for buffer %d (%s). Would you like to:',
                         bufnr, api.nvim_buf_get_name(bufnr)
-                    )
+                    ),
+                    'Save and close\nIgnore changes and close\nCancel'
                 )
 
-                if choice == 's' or choice == 'S' then  -- Save changes to the buffer.
+                if choice == 1 then  -- Save changes to the buffer.
                     api.nvim_buf_call(bufnr, function() cmd.write() end)
-                elseif choice ~= 'i' and choice ~= 'I' then  -- If not ignored, remove buffer from targets.
+                elseif choice ~= 2 then  -- If not ignored, remove buffer from targets.
                     target_buffers[bufnr] = nil
                 end
 
@@ -69,15 +62,15 @@ local function buf_kill(range, force, wipeout)
                 cmd.redraw()
             elseif bo[bufnr].buftype == 'terminal'
             and vim.fn.jobwait({bo[bufnr].channel}, 0)[1] == -1 then
-                local choice = char_prompt(
+                local choice = vim.fn.confirm(
                     string.format(
-                        'Terminal buffer %d (%s) is still running. Would you like to:\n' ..
-                        '(i)gnore and close\n(c)cancel',
+                        'Terminal buffer %d (%s) is still running. Would you like to:\n',
                         bufnr, api.nvim_buf_get_name(bufnr)
-                    )
+                    ),
+                    'Ignore and close\nCancel'
                 )
 
-                if choice ~= 'i' and choice ~= 'I' then
+                if choice ~= 1 then
                     target_buffers[bufnr] = nil
                 end
             end
